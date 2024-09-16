@@ -36,7 +36,7 @@ class Communication(object):
             # determine whether the opening is successful
             if self.main_engine.is_open:
                 Ret = True
-                # print("Ret = ", Ret)
+                print("Ret = ", Ret)
         except Exception as e:
             print("---Exception---：", e)
 

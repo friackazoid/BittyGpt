@@ -1,176 +1,165 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-# modified from https://blog.csdn.net/u013541325/article/details/113062191
-
-import serial  # need to install pyserial first
+import serial
 import serial.tools.list_ports
 
 
-class Communication(object):
+class Communication:
     """
-    Python serial communication package class
+    A class for handling serial communication using pySerial.
     """
 
-    def __init__(self, com, bps, timeout):
-        self.port = com  # serial port number
-        self.bps = bps  # baud rate
-        self.timeout = timeout  # timeout
-        self.main_engine = None  # global serial communication object
-        self.data = None
-        self.b_c_text = None
+    def __init__(self, port, baudrate=115200, timeout=0.5):
+        """
+        Initialize the serial communication.
+
+        :param port: Serial port name or number.
+        :param baudrate: Baud rate for the serial communication.
+        :param timeout: Read timeout value.
+        """
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.serial_engine = None
+        self.is_open = False
 
         try:
-            # open the serial port and get the serial port object
-            self.main_engine = serial.Serial(self.port, self.bps, timeout=self.timeout)
-            # determine whether the opening is successful
-            self.is_open = self.main_engine.is_open
+            # Open the serial port
+            self.serial_engine = serial.Serial(
+                port=self.port,
+                baudrate=self.baudrate,
+                timeout=self.timeout
+            )
+            self.is_open = self.serial_engine.is_open
         except Exception as e:
-            print('---Exception---：', e)
+            print('Exception occurred while opening serial port {self.port} :', e)
+            raise
 
-    def Print_Name(self):
+    def __enter__(self):
         """
-        Print the basic information of the device
+        Enter the runtime context related to this object.
         """
+        if not self.is_open:
+            self.open_engine()
+        return self
 
-        if self.main_engine is None:
-            print('Serial port not open')
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Exit the runtime context and close the serial port.
+        """
+        self.close_engine()
+
+    def print_device_info(self):
+        """
+        Print basic information about the serial device.
+        """
+        if self.serial_engine is None:
+            print('Serial port is not open.')
             return
 
-        print(self.main_engine.name)  # device name
-        print(self.main_engine.port)  # read or write port
-        print(self.main_engine.baudrate)  # baud rate
-        print(self.main_engine.bytesize)  # byte size
-        print(self.main_engine.parity)  # parity
-        print(self.main_engine.stopbits)  # stop bits
-        print(self.main_engine.timeout)  # read timeout setting
-        print(self.main_engine.writeTimeout)  # write timeout setting
-        print(self.main_engine.xonxoff)  # software flow control setting
-        print(self.main_engine.rtscts)  # hardware (RTS/CTS) flow control setting
-        print(self.main_engine.dsrdtr)  # hardware (DSR/DTR) flow control setting
-        print(self.main_engine.interCharTimeout)  # character interval timeout
+        print(f'Device Name: {self.serial_engine.name}')
+        print(f'Port: {self.serial_engine.port}')
+        print(f'Baudrate: {self.serial_engine.baudrate}')
+        print(f'Byte Size: {self.serial_engine.bytesize}')
+        print(f'Parity: {self.serial_engine.parity}')
+        print(f'Stop Bits: {self.serial_engine.stopbits}')
+        print(f'Timeout: {self.serial_engine.timeout}')
+        print(f'Write Timeout: {self.serial_engine.writeTimeout}')
+        print(f'XON/XOFF: {self.serial_engine.xonxoff}')
+        print(f'RTS/CTS: {self.serial_engine.rtscts}')
+        print(f'DSR/DTR: {self.serial_engine.dsrdtr}')
+        print(f'Inter-character Timeout: {self.serial_engine.interCharTimeout}')
 
-    def Open_Engine(self):
+    def open_engine(self):
         """
-        open serial port
+        Open the serial port if it's not already open.
         """
-        # If the serial port is not open, open the serial port
-        if not self.main_engine.is_open:
-            self.main_engine.open()
+        if not self.serial_engine.is_open:
+            self.serial_engine.open()
             self.is_open = True
 
-    def Close_Engine(self):
+    def close_engine(self):
         """
-        close serial port
+        Close the serial port if it's open.
         """
-        # print(self.main_engine.is_open)  # check if the serial port is open
-        # determine whether to open
-        if self.main_engine.is_open:
-            self.main_engine.close()  # close serial port
+        if self.serial_engine.is_open:
+            self.serial_engine.close()
             self.is_open = False
 
     @staticmethod
-    def Print_Used_Com():
+    def list_available_ports():
         """
-        print the list of available serial ports
-        """
+        List all available serial ports.
 
+        :return: List of tuples containing port device and name.
+        """
         ports = serial.tools.list_ports.comports()
-        port_list = [(port.device, port.name) for port in ports]
-        return port_list
+        return [(port.device, port.name) for port in ports]
 
-    # Receive data of specified size
-    # Read size bytes from the serial port.
-    # If a timeout is set it may return less characters as requested.
-    # With no timeout it will block until the requested number of bytes is read.
-    def Read_Size(self, size):
+    def read_size(self, size):
         """
-        Receive data of specified size
-        :param size:
-        :return:
-        """
-        return self.main_engine.read(size=size)
+        Read a specific number of bytes from the serial port.
 
-    # Receive a line of data
-    # When using readline(), you should pay attention:
-    # you should specify a timeout when opening the serial port,
-    # otherwise, if the serial port does not receive a new line,
-    # it will wait forever.
-    # If there is no timeout, readline() will report an exception.
-    def Read_Line(self):
+        :param size: Number of bytes to read.
+        :return: Bytes read from the serial port.
         """
-        Receive a line of data
-        :return:
-        """
-        return self.main_engine.readline()
+        return self.serial_engine.read(size=size)
 
-    def Send_data(self, data):
+    def read_line(self):
         """
-        send data
-        :param data:
+        Read a line from the serial port.
+
+        :return: Line read from the serial port.
+        """
+        return self.serial_engine.readline()
+
+    def send_data(self, data):
+        """
+        Send data over the serial port.
+
+        :param data: Data to send (bytes).
         """
         if not self.is_open:
-            print('Serial port is not open')
+            print('Serial port is not open.')
             return
-        self.main_engine.write(data)
+        self.serial_engine.write(data)
 
-    # more examples
-    # self.main_engine.write(bytes(listData))  # send list data listData = [0x01, 0x02, 0xFD] or listData = [1, 2, 253]
-    # self.main_engine.write(chr(0x06).encode("utf-8"))  # send a data in hexadecimal
-    # print(self.main_engine.read().hex())  # read a byte in hexadecimal
-    # print(self.main_engine.read())  # read a byte
-    # print(self.main_engine.read(10).decode("gbk"))  # read 10 bytes
-    # print(self.main_engine.readline().decode("gbk"))  # read a line
-    # print(self.main_engine.readlines())  # read multiple lines, return the list, must match the timeout (timeout) use
-    # print(self.main_engine.in_waiting)  # get the remaining bytes of the input buffer
-    # print(self.main_engine.out_waiting)  # Get the remaining bytes of the output buffer
-    # print(self.main_engine.readall())# read all characters
+    def receive_data(self, mode=1):
+        """
+        Receive data from the serial port.
 
-    # receive data
-    # an integer data occupies two bytes
-    # a character occupies one byte
-    def Receive_data(self, way):
+        :param mode: Mode of receiving data.
+                     0 - Read bytes individually.
+                     1 - Read all available bytes.
         """
-        receive data
-        :param way:
-        """
-        # Receiving data cyclically, this is an endless loop,
-        # which can be implemented by threads
-        print('Start receiving data：')
+        print('Start receiving data:')
         try:
             while True:
-                if self.main_engine.in_waiting:
-                    if way == 0:
-                        for _ in range(self.main_engine.in_waiting):
-                            print('Received ASCII data:', self.read_data(1))
-                    elif way == 1:
-                        self.data = self.main_engine.read(self.main_engine.in_waiting).decode("utf-8")
-                        print('Received ASCII data:', self.data)
-                        if not self.data.strip():
+                if self.serial_engine.in_waiting:
+                    if mode == 0:
+                        for _ in range(self.serial_engine.in_waiting):
+                            data = self.read_size(1)
+                            print('Received ASCII data:', data)
+                    elif mode == 1:
+                        data = self.serial_engine.read(
+                            self.serial_engine.in_waiting
+                        ).decode("utf-8")
+                        print('Received ASCII data:', data)
+                        if not data.strip():
                             break
         except Exception as e:
             print('Error while receiving data:', e)
-        print('Data reception completed!')
+        print('Data reception completed.')
 
 
 if __name__ == '__main__':
-    available_ports = Communication.Print_Used_Com()
+    available_ports = Communication.list_available_ports()
     if available_ports:
-        port = available_ports[0][0]  # Select the first available port
-        communication = Communication(port, 115200, 0.5)
-        print('Is port open:', communication.is_open)
-        communication.Open_Engine()
-        communication.Receive_data(1)
-        communication.Close_Engine()
+        port_name = available_ports[0][0]  # Select the first available port
+        with Communication(port_name) as communication:
+            print('Is port open:', communication.is_open)
+            communication.print_device_info()
+            communication.receive_data(mode=1)
     else:
         print('No available serial ports found.')
-
-
-# if __name__ == '__main__':
-#     Communication.Print_Used_Com()
-#     port = port_list_number
-#     myCom = Communication(port[0], 115200, 0.5)
-#     print("Ret = ", Ret)
-#     myCom.Open_Engine()
-#     myCom.Receive_data(1)
-#     myCom.Close_Engine()
