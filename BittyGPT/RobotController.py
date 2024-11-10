@@ -29,6 +29,8 @@ class RobotController:
         self.delay_between_slices = 0.001
         self.return_value = ''
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.port = None
+
 
     def serial_write_num_to_byte(self, port, token, var=None):
         self.logger.debug(f'serial_write_num_to_byte, token={token}, var={var}')
@@ -97,8 +99,9 @@ class RobotController:
             time.sleep(self.delay_between_slices)
         self.logger.debug(f'Sent data: {in_str}')
 
-    def serial_write_byte(self, port, var=None):
-        self.logger.debug(f'serial_write_byte, var={var}')
+    # TODO: make port member of the class
+    def _serial_write_byte(self, port, var=None):
+        self.logger.info(f'serial_write_byte, var={var}')
         if var is None:
             var = []
         token = var[0][0]
@@ -152,19 +155,20 @@ class RobotController:
             if 0 < timeout < now - start_time:
                 return -1
 
-    def send_task(self, port_list, port, task, timeout=0):
+    # TODO: make port member of the class
+    def send_task(self, port, task, timeout=0):
         self.logger.debug(f'Task: {task}')
         if port:
             try:
-                previous_buffer = port.serial_engine.read_all().decode('ISO-8859-1')
-                if previous_buffer:
-                    self.logger.debug(f"Previous buffer: {previous_buffer}")
+                if (previous_buffer := port.serial_engine.read_all().decode('ISO-8859-1')):
+                    self.logger.debug(f'Previous buffer: {previous_buffer}')
+
                 if len(task) == 2:
-                    self.serial_write_byte(port, [task[0]])
+                    self._serial_write_byte(port, [task[0]])
                 elif isinstance(task[1][0], int):
                     self.serial_write_num_to_byte(port, task[0], task[1])
                 else:
-                    self.serial_write_byte(port, task[1])
+                    self._serial_write_byte(port, task[1])
                 token = task[0][0]
                 if token in 'IL':
                     timeout = 1
@@ -172,34 +176,21 @@ class RobotController:
                 time.sleep(task[-1])
             except Exception as e:
                 self.logger.error(f"Error while sending task {task}: {e}")
-                if port in port_list:
-                    port_list.pop(port)
                 last_message = -1
         else:
             last_message = -1
         self.return_value = last_message
         return last_message
 
-    def send_task_parallel(self, ports, task, timeout=0):
-        threads = []
-        for p in ports:
-            t = threading.Thread(
-                target=self.send_task,
-                args=(good_ports, p, task, timeout),
-            )
-            threads.append(t)
-            t.start()
-        for t in threads:
-            if t.is_alive():
-                t.join()
-        return self.return_value
-
-    def split_task_for_large_angles(self, task):
+    @staticmethod
+    def split_task_for_large_angles(task):
+        """Split task for large angles."""
         token = task[0]
         queue = []
         if len(task) > 2 and token in 'LI':
             var = task[1]
             indexed_list = []
+
             if token == 'L':
                 for i in range(4):
                     for j in range(4):
@@ -213,6 +204,12 @@ class RobotController:
                     queue[0][-1] = 0.01
                     queue.append(['i', indexed_list, task[-1]])
             elif token == 'I':
+                """
+                'I' indicates the command to control all joint servos
+                to rotate AT THE SAME TIME (currently, the command supports
+                16 degrees of freedom, that is, 16 servos). The angles are
+                encoded as BINARY numbers for efficiency.
+                """
                 if min(var) < -125 or max(var) > 125:
                     task[0] = 'i'
                 queue.append(task)
@@ -223,24 +220,15 @@ class RobotController:
     def send(self, ports, task, timeout=0):
         """Send."""
         if isinstance(ports, dict):
-            return self._send_to_multiple_ports(ports, task, timeout)
+            # return self._send_to_multiple_ports(ports, task, timeout)
+            logger.error('Not implemented yet.')
         else:
             return self._send_to_single_port(ports, task, timeout)
 
     def _send_to_single_port(self, port, task, timeout=0):
         queue = self.split_task_for_large_angles(task)
         for task in queue:
-            return_result = self.send_task([port], port, task, timeout)
-        return return_result
-
-    def _send_to_multiple_ports(self, ports, task, timeout=0):
-        ports_list = list(ports.values())
-        queue = self.split_task_for_large_angles(task)
-        for task in queue:
-            if len(ports_list) > 1:
-                return_result = self.send_task_parallel(ports_list, task, timeout)
-            else:
-                return_result = self.send_task(ports_list, ports_list[0], task, timeout)
+            return_result = self.send_task(port, task, timeout)
         return return_result
 
     def close_serial_behavior(self, port):
@@ -294,6 +282,9 @@ device {all_ports[0][0]}; name {all_ports[0][1]}
 
             # Example usage of RobotController
             task = ['kbalance', 2]
+            robot.send(communication, task)
+
+            task = ['I', [20, 0, 0, 0, 0, 0, 0, 0, 45, 45, 45, 45, 36, 36, 36, 36], 5]
             robot.send(communication, task)
 
             task = ['d', 2]
