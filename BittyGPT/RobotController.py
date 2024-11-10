@@ -278,13 +278,25 @@ device {all_ports[0][0]}; name {all_ports[0][1]}
         print(msg)
         port_name = all_ports[0][0]  # Select the first available port
         with sc.Communication(port_name) as communication:
+            # TODO: read device info to start working with the robot
+            # refactor this
+            msg = f"""*** Device Info:
+                             {communication.get_device_info()}
+***************
+            """
+            print(msg)
             robot = RobotController()
 
             # Example usage of RobotController
-            task = ['kbalance', 2]
+            task = ['kbalance', 10]
             robot.send(communication, task)
 
-            task = ['I', [20, 0, 0, 0, 0, 0, 0, 0, 45, 45, 45, 45, 36, 36, 36, 36], 5]
+            task = ['I',
+                    # [30, 0, 0, 0, 0, 0, 0, -90, -45, -45, -90, -45, -45],
+                    # [20, 0, 0, 0, 0, 0, 0, 0, 90, 120, 90, 120, 90, 90, 90, 90],
+                    # 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 12, 13, 14, 15
+                    [20, 0, 0, 0, 0, 0, 0, 0, 45, 45, 45, 45, 90, 90, 36, 36],
+                    10]
             robot.send(communication, task)
 
             task = ['d', 2]
