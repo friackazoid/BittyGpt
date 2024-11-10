@@ -157,22 +157,21 @@ class Communication:
             print('Error while receiving data:', e)
         print('Data reception completed.')
 
-
-if __name__ == '__main__':
-
-    available_ports = Communication.list_available_ports()
-    if available_ports:
-        msg = f"""Trying to open port:
-        device {available_ports[0][0]}; name {available_ports[0][1]}
-        """
-        print(msg)
-        port_name = available_ports[0][0]  # Select the first available port
-        with Communication(port_name) as communication:
-            msg = f"""*** Device Info:
-{communication.get_device_info()}
-***************
-            """
-            print(msg)
-            communication.receive_data(mode=1)
-    else:
-        print('No available serial ports found.')
+#if __name__ == '__main__':
+#
+#    available_ports = Communication.list_available_ports()
+#    if available_ports:
+#        msg = f"""Trying to open port:
+#        device {available_ports[0][0]}; name {available_ports[0][1]}
+#        """
+#        print(msg)
+#        port_name = available_ports[0][0]  # Select the first available port
+#        with Communication(port_name) as communication:
+#            msg = f"""*** Device Info:
+#{communication.get_device_info()}
+#***************
+#            """
+#            print(msg)
+#            communication.receive_data(mode=1)
+#    else:
+#        print('No available serial ports found.')
