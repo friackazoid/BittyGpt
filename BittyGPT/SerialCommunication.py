@@ -22,7 +22,7 @@ class Communication:
         self.baudrate = baudrate
         self.timeout = timeout
         self.serial_engine = None
-        self.is_open = False
+        # self.is_open = False
 
         try:
             # Open the serial port
@@ -31,7 +31,7 @@ class Communication:
                 baudrate=self.baudrate,
                 timeout=self.timeout
             )
-            self.is_open = self.serial_engine.is_open
+            # self.is_open = self.serial_engine.is_open
         except Exception as e:
             print('Exception occurred while opening serial port {self.port} :', e)
             raise
@@ -40,7 +40,7 @@ class Communication:
         """
         Enter the runtime context related to this object.
         """
-        if not self.is_open:
+        if not self.serial_engine.is_open:
             self.open_engine()
         return self
 
@@ -50,26 +50,31 @@ class Communication:
         """
         self.close_engine()
 
-    def print_device_info(self):
+    def get_device_info(self):
         """
-        Print basic information about the serial device.
-        """
-        if self.serial_engine is None:
-            print('Serial port is not open.')
-            return
+        Get basic information about the serial device.
 
-        print(f'Device Name: {self.serial_engine.name}')
-        print(f'Port: {self.serial_engine.port}')
-        print(f'Baudrate: {self.serial_engine.baudrate}')
-        print(f'Byte Size: {self.serial_engine.bytesize}')
-        print(f'Parity: {self.serial_engine.parity}')
-        print(f'Stop Bits: {self.serial_engine.stopbits}')
-        print(f'Timeout: {self.serial_engine.timeout}')
-        print(f'Write Timeout: {self.serial_engine.writeTimeout}')
-        print(f'XON/XOFF: {self.serial_engine.xonxoff}')
-        print(f'RTS/CTS: {self.serial_engine.rtscts}')
-        print(f'DSR/DTR: {self.serial_engine.dsrdtr}')
-        print(f'Inter-character Timeout: {self.serial_engine.interCharTimeout}')
+        :return: String containing device information.
+        """
+        if not self.serial_engine.is_open:
+            return 'Serial port is not open.'
+
+        # Gather device details
+        info = (
+            f'Device Name: {self.serial_engine.name}\n'
+            f'Port: {self.serial_engine.port}\n'
+            f'Baudrate: {self.serial_engine.baudrate}\n'
+            f'Byte Size: {self.serial_engine.bytesize}\n'
+            f'Parity: {self.serial_engine.parity}\n'
+            f'Stop Bits: {self.serial_engine.stopbits}\n'
+            f'Timeout: {self.serial_engine.timeout}\n'
+            f'Write Timeout: {self.serial_engine.writeTimeout}\n'
+            f'XON/XOFF: {self.serial_engine.xonxoff}\n'
+            f'RTS/CTS: {self.serial_engine.rtscts}\n'
+            f'DSR/DTR: {self.serial_engine.dsrdtr}\n'
+            f'Inter-character Timeout: {self.serial_engine.interCharTimeout}'
+        )
+        return info
 
     def open_engine(self):
         """
@@ -77,7 +82,7 @@ class Communication:
         """
         if not self.serial_engine.is_open:
             self.serial_engine.open()
-            self.is_open = True
+            # self.is_open = True
 
     def close_engine(self):
         """
@@ -85,7 +90,7 @@ class Communication:
         """
         if self.serial_engine.is_open:
             self.serial_engine.close()
-            self.is_open = False
+            # self.is_open = False
 
     @staticmethod
     def list_available_ports():
@@ -120,7 +125,7 @@ class Communication:
 
         :param data: Data to send (bytes).
         """
-        if not self.is_open:
+        if not self.serial_engine.is_open:
             print('Serial port is not open.')
             return
         self.serial_engine.write(data)
@@ -144,7 +149,7 @@ class Communication:
                     elif mode == 1:
                         data = self.serial_engine.read(
                             self.serial_engine.in_waiting
-                        ).decode("utf-8")
+                        ).decode('utf-8')
                         print('Received ASCII data:', data)
                         if not data.strip():
                             break
@@ -154,12 +159,20 @@ class Communication:
 
 
 if __name__ == '__main__':
+
     available_ports = Communication.list_available_ports()
     if available_ports:
+        msg = f"""Trying to open port:
+        device {available_ports[0][0]}; name {available_ports[0][1]}
+        """
+        print(msg)
         port_name = available_ports[0][0]  # Select the first available port
         with Communication(port_name) as communication:
-            print('Is port open:', communication.is_open)
-            communication.print_device_info()
+            msg = f"""*** Device Info:
+{communication.get_device_info()}
+***************
+            """
+            print(msg)
             communication.receive_data(mode=1)
     else:
         print('No available serial ports found.')
